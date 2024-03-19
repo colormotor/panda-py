@@ -9,23 +9,34 @@
 class CartesianImpedance : public TorqueController {
  public:
   static const Eigen::Matrix<double, 6, 6> kDefaultImpedance;
+	static const Eigen::Vector3d kDefaultPosStiffness;
+	static const Eigen::Vector3d kDefaultRotStiffness;
   static const double kDefaultDampingRatio;
   static const double kDefaultNullspaceStiffness;
   static const double kDefaultFilterCoeff;
 
-  CartesianImpedance(const Eigen::Matrix<double, 6, 6> &impedance =
-                        kDefaultImpedance,
+		CartesianImpedance(const Eigen::Vector3d& posStiffness=kDefaultPosStiffness,
+											 const Eigen::Vector3d& rotStiffness=kDefaultRotStiffness,
                      const double &damping_ratio = kDefaultDampingRatio,
                      const double &nullspace_stiffness =
                          kDefaultNullspaceStiffness,
                      const double &filter_coeff = kDefaultFilterCoeff);
+
+  // CartesianImpedance(const Eigen::Matrix<double, 6, 6> &impedance =
+  //                       kDefaultImpedance,
+  //                    const double &damping_ratio = kDefaultDampingRatio,
+  //                    const double &nullspace_stiffness =
+  //                        kDefaultNullspaceStiffness,
+  //                    const double &filter_coeff = kDefaultFilterCoeff);
 
   franka::Torques step(const franka::RobotState &robot_state,
                        franka::Duration &duration) override;
   void setControl(const Eigen::Vector3d &position,
                   const Eigen::Vector4d &orientation,
                   const Vector7d &q_nullspace = kJointPositionStart);
-  void setImpedance(const Eigen::Matrix<double, 6, 6> &impedance);
+  void setImpedance(const Eigen::Vector3d& posStiffness,
+										const Eigen::Vector3d& rotStiffness);
+	//void setImpedance(const Eigen::Matrix<double, 6, 6> &impedance);
   void setDampingRatio(const double &damping_ratio);
   void setNullspaceStiffness(const double &nullspace_stiffness);
   void setFilter(const double filter_coeff);
