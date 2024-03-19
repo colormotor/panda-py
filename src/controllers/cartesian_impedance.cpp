@@ -24,6 +24,8 @@ const double kDefaultRotStiffnessData[3] = {10, 10, 10};
 const Vector3d CartesianImpedance::kDefaultRotStiffness =
     Vector3d(kDefaultRotStiffnessData);
 
+const Eigen::Matrix<double, 3, 3> CartesianImpedance::kDefaultPosAxes = Eigen::Matrix<double, 3, 3>::Identity();
+
 const double CartesianImpedance::kDefaultDampingRatio = 1.0;
 const double CartesianImpedance::kDefaultNullspaceStiffness = 0.5;
 const double CartesianImpedance::kDefaultFilterCoeff = 1.0;
@@ -39,8 +41,9 @@ CartesianImpedance::CartesianImpedance(
 	posStiffness_ = posStiffness;
 	rotStiffness_ = rotStiffness;
 	
-  K_p_ = _stiffnessToKp();
-  K_p_target_ = K_p_;
+  _computeStiffness();
+	K_p_ = K_p_target_;
+
   damping_ratio_ = damping_ratio;
   _computeDamping();
   K_d_ = K_d_target_;
@@ -66,12 +69,20 @@ CartesianImpedance::CartesianImpedance(
 // };
 
 void CartesianImpedance::_computeDamping() {
-	Vector3d posDamping = damping_ratio * 2 * posStiffness.cwiseSqrt();
-	Vector3d rotDamping = damping_ratio * 2 * rotStiffness.cwiseSqrt();
-	K_d_target.setIdentity();
-	K_d_target.topLeftCorner(3,3) = posAxes * posDamping.asDiagonal() * posAxes.transpose();
-	K_d_target.bottomRightCorner(3,3) = rotDamping.asDiagonal();
+	Vector3d posDamping = damping_ratio * 2 * posStiffness_.cwiseSqrt();
+	Vector3d rotDamping = damping_ratio * 2 * rotStiffness_.cwiseSqrt();
+	K_d_target_.setIdentity();
+	K_d_target_.topLeftCorner(3,3) << posAxes_ * posDamping.asDiagonal() * posAxes_.transpose();
+	K_d_target_.bottomRightCorner(3,3) << rotDamping.asDiagonal();
 };
+
+
+void CartesianImpedance::_computeStiffness() {
+	K_p_target_.setIdentity();
+	K_p_target_.topLeftCorner(3,3) << posAxes * posStiffness_.asDiagonal() * posAxes.transpose();
+	K_p_target_.bottomRightCorner(3,3) << rotStiffness_.asDiagonal();
+}
+
 
 franka::Torques CartesianImpedance::step(const franka::RobotState &robot_state,
                                          franka::Duration &duration) {
@@ -154,14 +165,6 @@ void CartesianImpedance::_updateFilter() {
   orientation_d_ = orientation_d_.slerp(filter_coeff_, orientation_d_target_);
 }
 
-Eigen::Matrix<double, 6, 6> CartesianImpedance::_stiffnessToKp() {
-	Matrix<double, 6, 6> Kp;
-	Kp.setIdentity();
-	K_p.topLeftCorner(3,3) = posAxes * posStiffness_.asDiagonal() * posAxes.transpose();
-	K_p.bottomRightCorner(3,3) = rotStiffness_.asDiagonal()
-	return Kp;
-}
-
 void CartesianImpedance::setControl(const Eigen::Vector3d &position,
                                     const Eigen::Vector4d &orientation,
                                     const Vector7d &q_nullspace) {
@@ -173,11 +176,13 @@ void CartesianImpedance::setControl(const Eigen::Vector3d &position,
 
 void CartesianImpedance::setImpedance(
 	const Eigen::Vector3d& posStiffness,
-	const Eigen::Vector3d& rotStiffness) {
+	const Eigen::Vector3d& rotStiffness,
+	const Eigen::Matrix<double, 3, 3> posAxes) {
   std::lock_guard<std::mutex> lock(mux_);
 	posStiffness_ = posStiffness;
 	rotStiffness_ = rotStiffness;
-  K_p_target_ = _stiffnessToKp();
+	posAxes_ = posAxes;
+	_computeStiffness();
   _computeDamping();
 }
 

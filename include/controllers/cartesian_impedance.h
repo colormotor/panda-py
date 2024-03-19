@@ -8,15 +8,17 @@
 
 class CartesianImpedance : public TorqueController {
  public:
-  static const Eigen::Matrix<double, 6, 6> kDefaultImpedance;
+  //static const Eigen::Matrix<double, 6, 6> kDefaultImpedance;
 	static const Eigen::Vector3d kDefaultPosStiffness;
 	static const Eigen::Vector3d kDefaultRotStiffness;
+	static const Eigen::Matrix<double, 3, 3> kDefaultPosAxes;
   static const double kDefaultDampingRatio;
   static const double kDefaultNullspaceStiffness;
   static const double kDefaultFilterCoeff;
 
-		CartesianImpedance(const Eigen::Vector3d& posStiffness=kDefaultPosStiffness,
-											 const Eigen::Vector3d& rotStiffness=kDefaultRotStiffness,
+	CartesianImpedance(const Eigen::Vector3d& posStiffness=kDefaultPosStiffness,
+										 const Eigen::Vector3d& rotStiffness=kDefaultRotStiffness,
+										 const Eigen::Matrix<double, 3, 3> posAxes=kDefaultPosAxes,
                      const double &damping_ratio = kDefaultDampingRatio,
                      const double &nullspace_stiffness =
                          kDefaultNullspaceStiffness,
@@ -35,7 +37,8 @@ class CartesianImpedance : public TorqueController {
                   const Eigen::Vector4d &orientation,
                   const Vector7d &q_nullspace = kJointPositionStart);
   void setImpedance(const Eigen::Vector3d& posStiffness,
-										const Eigen::Vector3d& rotStiffness);
+										const Eigen::Vector3d& rotStiffness,
+										const Eigen::Matrix<double, 3, 3> posAxes=kDefaultPosAxes);
 	//void setImpedance(const Eigen::Matrix<double, 6, 6> &impedance);
   void setDampingRatio(const double &damping_ratio);
   void setNullspaceStiffness(const double &nullspace_stiffness);
@@ -49,6 +52,8 @@ class CartesianImpedance : public TorqueController {
 
  private:
   Eigen::Matrix<double, 6, 6> K_p_, K_d_, K_p_target_, K_d_target_;
+	Eigen::Vector3d posStiffness_, rotStiffness_;
+	Eigen::Matrix<double, 3, 3> posAxes_;
   Eigen::Vector3d position_d_, position_d_target_;
   Eigen::Quaterniond orientation_d_, orientation_d_target_;
   Vector7d q_nullspace_d_, q_nullspace_d_target_;
@@ -60,4 +65,5 @@ class CartesianImpedance : public TorqueController {
 
   void _updateFilter();
   void _computeDamping();
+	void _computeStiffness();
 };

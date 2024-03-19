@@ -321,12 +321,53 @@ PYBIND11_MODULE(_core, m) {
       .def("set_filter", &JointPosition::setFilter,
            py::call_guard<py::gil_scoped_release>(), py::arg("filter_coeff"));
 
+	  // py::class_<CartesianImpedance, TorqueController,
+    //          std::shared_ptr<CartesianImpedance>>(m, "CartesianImpedance")
+    //   .def(py::init<const Eigen::Matrix<double, 6, 6> &, const double &,
+    //                 const double &,
+    //                 const double &>(), /*py::keep_alive<1, 0>(),*/
+    //        py::arg("impedance") = CartesianImpedance::kDefaultImpedance,
+    //        py::arg("damping_ratio") = CartesianImpedance::kDefaultDampingRatio,
+    //        py::arg("nullspace_stiffness") =
+    //            CartesianImpedance::kDefaultNullspaceStiffness,
+    //        py::arg("filter_coeff") = CartesianImpedance::kDefaultFilterCoeff,
+    //        R"delim(
+    //            Cartesian impedance controller. Takes the end-effector pose in robot
+    //            base frame, as well as desired nullspace joint positions as input.
+
+    //            Args:
+    //              impedance: Cartesian impedance expressed as a matrix
+    //                :math:`\in \mathbb{R}^{6\times 6}`.
+    //              damping_ratio: Cartesian damping is computed based on the given
+    //                impedance and damping ratio.
+    //              nullspace_stiffness: Control gain of the nullspace term.
+    //              filter_coeff: TP1 filter coefficient used to filter input signals.
+    //        )delim")
+    //   .def("set_control", &CartesianImpedance::setControl,
+    //        py::call_guard<py::gil_scoped_release>(), py::arg("position"),
+    //        py::arg("orientation"), py::arg("q_nullspace") = kJointPositionStart)
+    //   .def("set_impedance", &CartesianImpedance::setImpedance,
+    //        py::call_guard<py::gil_scoped_release>(), py::arg("impedance"))
+    //   .def("set_damping_ratio", &CartesianImpedance::setDampingRatio,
+    //        py::call_guard<py::gil_scoped_release>(), py::arg("damping"))
+    //   .def("set_nullspace_stiffness",
+    //        &CartesianImpedance::setNullspaceStiffness,
+    //        py::call_guard<py::gil_scoped_release>(),
+    //        py::arg("nullspace_stiffness"))
+    //   .def("set_filter", &CartesianImpedance::setFilter,
+    //        py::call_guard<py::gil_scoped_release>(), py::arg("filter_coeff"));
+
+
   py::class_<CartesianImpedance, TorqueController,
              std::shared_ptr<CartesianImpedance>>(m, "CartesianImpedance")
-      .def(py::init<const Eigen::Matrix<double, 6, 6> &, const double &,
-                    const double &,
-                    const double &>(), /*py::keep_alive<1, 0>(),*/
-           py::arg("impedance") = CartesianImpedance::kDefaultImpedance,
+      .def(py::init<const Eigen::Vector3d&,
+					 const Eigen::Vector3d&, const Matrix<double, 3, 3>&,
+					 const double &,
+           const double &,
+					 const double &>(), /*py::keep_alive<1, 0>(),*/
+           py::arg("pos_stiffness") = CartesianImpedance::kDefaultPosStiffness,
+					 py::arg("rot_stiffness") = CartesianImpedance::kDefaultRotStiffness,
+					 py::arg("pos_axes") = CartesianImpedance::kDefaultPosAxes,
            py::arg("damping_ratio") = CartesianImpedance::kDefaultDampingRatio,
            py::arg("nullspace_stiffness") =
                CartesianImpedance::kDefaultNullspaceStiffness,
@@ -336,8 +377,9 @@ PYBIND11_MODULE(_core, m) {
                base frame, as well as desired nullspace joint positions as input.
 
                Args:
-                 impedance: Cartesian impedance expressed as a matrix
-                   :math:`\in \mathbb{R}^{6\times 6}`.
+                 pos_stiffness: Position stiffness along 3 axes, expressed as a vector,
+                 rot_stiffness: Rotation stiffness along 3 axes, expressed as a vector,
+                 pos_axes: Position stiffness axes, expressed as a 3x3 matrix,
                  damping_ratio: Cartesian damping is computed based on the given
                    impedance and damping ratio.
                  nullspace_stiffness: Control gain of the nullspace term.
@@ -347,7 +389,10 @@ PYBIND11_MODULE(_core, m) {
            py::call_guard<py::gil_scoped_release>(), py::arg("position"),
            py::arg("orientation"), py::arg("q_nullspace") = kJointPositionStart)
       .def("set_impedance", &CartesianImpedance::setImpedance,
-           py::call_guard<py::gil_scoped_release>(), py::arg("impedance"))
+           py::call_guard<py::gil_scoped_release>(),
+					 py::arg("pos_stiffneess"),
+					 py::arg("rot_stiffneess"),
+           py::arg("pos_axes") = CartesianImpedance::kDefaultPosAxes)
       .def("set_damping_ratio", &CartesianImpedance::setDampingRatio,
            py::call_guard<py::gil_scoped_release>(), py::arg("damping"))
       .def("set_nullspace_stiffness",
