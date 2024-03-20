@@ -5,84 +5,38 @@
 #include "panda.h"
 
 // clang-format off
-// double data[36] = {200,   0,   0,  0,  0,  0,
-//                      0, 200,   0,  0,  0,  0,
-//                      0,   0, 200,  0,  0,  0,
-//                      0,   0,   0, 10,  0,  0,
-//                      0,   0,   0,  0, 10,  0,
-//                      0,   0,   0,  0,  0, 10};
-
-// // clang-format on
-// const Eigen::Matrix<double, 6, 6> CartesianImpedance::kDefaultImpedance =
-//     Eigen::Matrix<double, 6, 6>(data);
-
-const double kDefaultPosStiffnessData[3] = {200, 200, 200};
-const Vector3d CartesianImpedance::kDefaultPosStiffness =
-    Vector3d(kDefaultPosStiffnessData);
-
-const double kDefaultRotStiffnessData[3] = {10, 10, 10};
-const Vector3d CartesianImpedance::kDefaultRotStiffness =
-    Vector3d(kDefaultRotStiffnessData);
-
-const Eigen::Matrix<double, 3, 3> CartesianImpedance::kDefaultPosAxes = Eigen::Matrix<double, 3, 3>::Identity();
-
+double data[36] = {200,   0,   0,  0,  0,  0,
+                     0, 200,   0,  0,  0,  0,
+                     0,   0, 200,  0,  0,  0,
+                     0,   0,   0, 10,  0,  0,
+                     0,   0,   0,  0, 10,  0,
+                     0,   0,   0,  0,  0, 10};
+// clang-format on
+const Eigen::Matrix<double, 6, 6> CartesianImpedance::kDefaultImpedance =
+    Eigen::Matrix<double, 6, 6>(data);
 const double CartesianImpedance::kDefaultDampingRatio = 1.0;
 const double CartesianImpedance::kDefaultNullspaceStiffness = 0.5;
 const double CartesianImpedance::kDefaultFilterCoeff = 1.0;
 
 CartesianImpedance::CartesianImpedance(
-	 const Eigen::Vector3d& posStiffness,
-	 const Eigen::Vector3d& rotStiffness,
-	 const Eigen::Matrix<double, 3, 3>& posAxes
-   const double &damping_ratio,
-   const double &nullspace_stiffness, const double &filter_coeff) {
-	
-	posAxes_ = posAxes;
-	posStiffness_ = posStiffness;
-	rotStiffness_ = rotStiffness;
-	
-  _computeStiffness();
-	K_p_ = K_p_target_;
-
+    const Eigen::Matrix<double, 6, 6> &impedance, const double &damping_ratio,
+    const double &nullspace_stiffness, const double &filter_coeff,
+		const bool& useEndEffectorFrame) {
+  K_p_ = impedance;
+  K_p_target_ = impedance;
   damping_ratio_ = damping_ratio;
   _computeDamping();
   K_d_ = K_d_target_;
   nullspace_stiffness_ = nullspace_stiffness;
   nullspace_stiffnes_target_ = nullspace_stiffness;
   filter_coeff_ = filter_coeff;
+	useEndEffectorFrame_ = useEndEffectorFrame;
+	//motion_finished_ = true;
 };
-
-// CartesianImpedance::CartesianImpedance(
-// 	 const Eigen::Vector3d& posStiffness=kDefaultPosStiffness,
-// 											 const Eigen::Vector3d& rotStiffness=kDefaultRotStiffness,
-// 	 const Eigen::Matrix<double, 3, 3>& posAxes
-//     const Eigen::Matrix<double, 6, 6> &impedance, const double &damping_ratio,
-//     const double &nullspace_stiffness, const double &filter_coeff) {
-//   K_p_ = impedance;
-//   K_p_target_ = impedance;
-//   damping_ratio_ = damping_ratio;
-//   _computeDamping();
-//   K_d_ = K_d_target_;
-//   nullspace_stiffness_ = nullspace_stiffness;
-//   nullspace_stiffnes_target_ = nullspace_stiffness;
-//   filter_coeff_ = filter_coeff;
-// };
 
 void CartesianImpedance::_computeDamping() {
-	Vector3d posDamping = damping_ratio * 2 * posStiffness_.cwiseSqrt();
-	Vector3d rotDamping = damping_ratio * 2 * rotStiffness_.cwiseSqrt();
-	K_d_target_.setIdentity();
-	K_d_target_.topLeftCorner(3,3) << posAxes_ * posDamping.asDiagonal() * posAxes_.transpose();
-	K_d_target_.bottomRightCorner(3,3) << rotDamping.asDiagonal();
+  K_d_target_ = damping_ratio_ * 2 * K_p_.cwiseSqrt();
 };
-
-
-void CartesianImpedance::_computeStiffness() {
-	K_p_target_.setIdentity();
-	K_p_target_.topLeftCorner(3,3) << posAxes * posStiffness_.asDiagonal() * posAxes.transpose();
-	K_p_target_.bottomRightCorner(3,3) << rotStiffness_.asDiagonal();
-}
-
 
 franka::Torques CartesianImpedance::step(const franka::RobotState &robot_state,
                                          franka::Duration &duration) {
@@ -95,9 +49,22 @@ franka::Torques CartesianImpedance::step(const franka::RobotState &robot_state,
   _updateFilter();
   K_p = K_p_;
   K_d = K_d_;
+
+
   position_d = position_d_;
   orientation_d = orientation_d_;
   q_nullspace_d = q_nullspace_d_;
+
+	// Optionally transform gain matrices to end effector frame
+	if (useEndEffectorFrame_) {
+		Matrix3d R = oreintation_d_.toRotationMatrix();
+		Matrix3d Rt = R.transpose();
+		K_p.topLeftCorner(3,3) << R * K_p.topLeftCorner(3,3) * Rt;
+		K_p.bottomLeftCorner(3,3) << R * K_p.bottomLeftCorner(3,3) * Rt;
+		K_d.topLeftCorner(3,3) << R * K_d.topLeftCorner(3,3) * Rt;
+		K_d.bottomLeftCorner(3,3) << R * K_d.bottomLeftCorner(3,3) * Rt;
+	}
+
   mux_.unlock();
 
   // get state variables
@@ -175,14 +142,9 @@ void CartesianImpedance::setControl(const Eigen::Vector3d &position,
 }
 
 void CartesianImpedance::setImpedance(
-	const Eigen::Vector3d& posStiffness,
-	const Eigen::Vector3d& rotStiffness,
-	const Eigen::Matrix<double, 3, 3> posAxes) {
+    const Eigen::Matrix<double, 6, 6> &impedance) {
   std::lock_guard<std::mutex> lock(mux_);
-	posStiffness_ = posStiffness;
-	rotStiffness_ = rotStiffness;
-	posAxes_ = posAxes;
-	_computeStiffness();
+  K_p_target_ = impedance;
   _computeDamping();
 }
 
@@ -227,4 +189,3 @@ void CartesianImpedance::stop(const franka::RobotState &robot_state,
 bool CartesianImpedance::isRunning() { return !motion_finished_; }
 
 const std::string CartesianImpedance::name() { return "Cartesian Impedance"; }
-
