@@ -36,6 +36,8 @@ class CartesianImpedance : public TorqueController {
   void stop(const franka::RobotState &robot_state,
             std::shared_ptr<franka::Model> model) override;
   bool isRunning() override;
+		Eigen::Vector4d getStiffnessOrientation() const { return stiffness_orientation_.coeffs(); }
+		
   const std::string name() override;
 
  private:

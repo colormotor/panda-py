@@ -356,6 +356,7 @@ PYBIND11_MODULE(_core, m) {
            &CartesianImpedance::setNullspaceStiffness,
            py::call_guard<py::gil_scoped_release>(),
            py::arg("nullspace_stiffness"))
+			.def("get_stiffness_orientation", &CartesianImpedance::getStiffnessOrientation)
       .def("set_filter", &CartesianImpedance::setFilter,
            py::call_guard<py::gil_scoped_release>(), py::arg("filter_coeff"));
 
