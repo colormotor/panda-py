@@ -326,13 +326,13 @@ PYBIND11_MODULE(_core, m) {
       .def(py::init<const Eigen::Matrix<double, 6, 6> &, const double &,
                     const double &,
                     const double &,
-					          const bool &>(), /*py::keep_alive<1, 0>(),*/
+					          const Eigen::Vector4d &>(), /*py::keep_alive<1, 0>(),*/
            py::arg("impedance") = CartesianImpedance::kDefaultImpedance,
            py::arg("damping_ratio") = CartesianImpedance::kDefaultDampingRatio,
            py::arg("nullspace_stiffness") =
                CartesianImpedance::kDefaultNullspaceStiffness,
            py::arg("filter_coeff") = CartesianImpedance::kDefaultFilterCoeff,
-					 py::arg("use_end_effector_frame") = false,
+					 py::arg("stiffness_orientation") = CartesianImpedance::kDefaultStiffnessOrientation,
            R"delim(
                Cartesian impedance controller. Takes the end-effector pose in robot
                base frame, as well as desired nullspace joint positions as input.

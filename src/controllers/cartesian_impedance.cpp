@@ -17,11 +17,14 @@ const Eigen::Matrix<double, 6, 6> CartesianImpedance::kDefaultImpedance =
 const double CartesianImpedance::kDefaultDampingRatio = 1.0;
 const double CartesianImpedance::kDefaultNullspaceStiffness = 0.5;
 const double CartesianImpedance::kDefaultFilterCoeff = 1.0;
+const Eigen::Vector4d CartesianImpedance::kDefaultStiffnessOrientation = Eigen::Vector4d(0.0, 0.0, 0.0, 1.0); // Eigen::Quaterniond::Identity();
 
 CartesianImpedance::CartesianImpedance(
-    const Eigen::Matrix<double, 6, 6> &impedance, const double &damping_ratio,
-    const double &nullspace_stiffness, const double &filter_coeff,
-		const bool& useEndEffectorFrame) {
+    const Eigen::Matrix<double, 6, 6> &impedance,
+		const double &damping_ratio,
+    const double &nullspace_stiffness,
+		const double &filter_coeff,
+		const Eigen::Vector4d& stiffness_orientation) {
   K_p_ = impedance;
   K_p_target_ = impedance;
   damping_ratio_ = damping_ratio;
@@ -30,7 +33,7 @@ CartesianImpedance::CartesianImpedance(
   nullspace_stiffness_ = nullspace_stiffness;
   nullspace_stiffnes_target_ = nullspace_stiffness;
   filter_coeff_ = filter_coeff;
-	useEndEffectorFrame_ = useEndEffectorFrame;
+	stiffness_orientation_ = stiffness_orientation;
 	//motion_finished_ = true;
 };
 
@@ -56,14 +59,14 @@ franka::Torques CartesianImpedance::step(const franka::RobotState &robot_state,
   q_nullspace_d = q_nullspace_d_;
 
 	// Optionally transform gain matrices to end effector frame
-	if (useEndEffectorFrame_) {
-		Matrix3d R = oreintation_d_.toRotationMatrix();
-		Matrix3d Rt = R.transpose();
-		K_p.topLeftCorner(3,3) << R * K_p.topLeftCorner(3,3) * Rt;
-		K_p.bottomLeftCorner(3,3) << R * K_p.bottomLeftCorner(3,3) * Rt;
-		K_d.topLeftCorner(3,3) << R * K_d.topLeftCorner(3,3) * Rt;
-		K_d.bottomLeftCorner(3,3) << R * K_d.bottomLeftCorner(3,3) * Rt;
-	}
+	//if (useEndEffectorFrame_) {
+	Eigen::Matrix3d R = stiffness_orientation_.toRotationMatrix();
+	Eigen::Matrix3d Rt = R.transpose();
+	K_p.topLeftCorner(3,3) << R * K_p.topLeftCorner(3,3) * Rt;
+	K_p.bottomLeftCorner(3,3) << R * K_p.bottomLeftCorner(3,3) * Rt;
+	K_d.topLeftCorner(3,3) << R * K_d.topLeftCorner(3,3) * Rt;
+	K_d.bottomLeftCorner(3,3) << R * K_d.bottomLeftCorner(3,3) * Rt;
+	//}
 
   mux_.unlock();
 
@@ -117,6 +120,7 @@ franka::Torques CartesianImpedance::step(const franka::RobotState &robot_state,
   // Desired torque
   tau_d << tau_task + tau_nullspace + coriolis;
 
+	
   franka::Torques torques = VectorToArray<7>(tau_d);
   torques.motion_finished = motion_finished_;
   return torques;

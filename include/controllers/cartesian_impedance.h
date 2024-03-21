@@ -12,14 +12,15 @@ class CartesianImpedance : public TorqueController {
   static const double kDefaultDampingRatio;
   static const double kDefaultNullspaceStiffness;
   static const double kDefaultFilterCoeff;
-
+	static const Eigen::Vector4d kDefaultStiffnessOrientation;
+		
   CartesianImpedance(const Eigen::Matrix<double, 6, 6> &impedance =
                         kDefaultImpedance,
                      const double &damping_ratio = kDefaultDampingRatio,
                      const double &nullspace_stiffness =
                          kDefaultNullspaceStiffness,
                      const double &filter_coeff = kDefaultFilterCoeff,
-										 bool useEndEffectorFrame = false);
+										 const Eigen::Vector4d& stiffness_orientation = kDefaultStiffnessOrientation);
 
   franka::Torques step(const franka::RobotState &robot_state,
                        franka::Duration &duration) override;
@@ -40,15 +41,13 @@ class CartesianImpedance : public TorqueController {
  private:
   Eigen::Matrix<double, 6, 6> K_p_, K_d_, K_p_target_, K_d_target_;
   Eigen::Vector3d position_d_, position_d_target_;
-  Eigen::Quaterniond orientation_d_, orientation_d_target_;
+	Eigen::Quaterniond orientation_d_, orientation_d_target_, stiffness_orientation_;
   Vector7d q_nullspace_d_, q_nullspace_d_target_;
   double filter_coeff_, nullspace_stiffness_, nullspace_stiffnes_target_,
       damping_ratio_;
   std::mutex mux_;
   std::atomic<bool> motion_finished_;
   std::shared_ptr<franka::Model> model_;
-
-	bool useEndEffectorFrame_;
 
   void _updateFilter();
   void _computeDamping();
